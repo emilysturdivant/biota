@@ -109,7 +109,7 @@ def extractGamma0(dataloc, year, shp, plot_field, agb_field, buffer_size = 0, ve
     if agb_field is not None:
         data_dict['plot_AGB'] = agb.tolist()
 
-    with open('gamma0_%s_by_plot.csv'%str(year), 'w') as f:  # Just use 'w' mode in 3.x
+    with open('gamma0_%s_by_plot.csv'%str(year), 'wb') as f:  # Just use 'w' mode in 3.x
         writer = csv.writer(f, delimiter = ',')
         writer.writerow(list(data_dict.keys()))
         for row in range(len(plot_names)):
@@ -139,3 +139,5 @@ def fitLinearModel(data_dict):
     print("p value:", p_value)
 
     return slope, intercept
+
+
