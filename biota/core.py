@@ -36,7 +36,7 @@ class LoadTile(object):
         lat: Latitude of the upper-left hand corner of the mosaic tile.
         lon: Longitude of the upper-left hand corner of the mosaic tile.
         year: Year of the ALOS mosaic tile
-        
+
     Further optional attributes are:
         forest_threshold: The theshold of aboveground biomass that separates forest from non-forest in units of tonnes carbon per hectare (tC/ha). Defaults to 10 tC/ha (approximately 10% canopy cover in soutehrn Africa).
         area_threshold: Contiguous area required to meet the definiton of forest, in units of hectares. Defaults to 0 ha.
@@ -48,7 +48,7 @@ class LoadTile(object):
 
     For example, to load an ALOS tile:
         tile_2015 = biota.LoadTile('/path/to/data_dir/', -15, 30, 2015)
-        
+
     To load an ALOS tile, but applying a 20 tC/ha forest threshold and a 1 hectare forest definition:
         tile_2015 = biota.LoadTile('/path/to/data_dir/', -15, 30, 2015, forest_thresold = 20., area_threshold = 1.)
     """
@@ -87,14 +87,14 @@ class LoadTile(object):
         self.contiguity = contiguity
         self.forest_threshold = forest_threshold
         self.area_threshold = area_threshold
-        
+
         # Deterine hemispheres
         self.hem_NS = 'S' if lat < 0 else 'N'
         self.hem_EW = 'W' if lon < 0 else 'E'
-        
+
         # Determine whether ALOS-1 or ALOS-2
         self.satellite = self.__getSatellite()
-        
+
         # Determine filenames
         self.data_dir = os.path.expanduser(data_dir.rstrip('/'))
         self.directory = self.__getDirectory()
@@ -629,7 +629,7 @@ class LoadTile(object):
 
         return gamma0
 
-    def getAGB(self, output = False, show = False):
+    def getAGB(self, slope = 715.667, intercept = -5.967, output = False, show = False):
         """
         Calibrates data to aboveground biomass (AGB).
         Placeholder equation to calibrate backscatter (gamma0) to AGB (tC/ha).
@@ -640,11 +640,11 @@ class LoadTile(object):
 
             # ALOS-1
             if self.satellite == 'ALOS-1':
-                AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV') - 5.967
+                AGB = slope * self.getGamma0(units = 'natural', polarisation = 'HV') + intercept
 
             # ALOS-2 (to calculate)
             elif self.satellite == 'ALOS-2':
-                AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV') - 5.967
+                AGB = slope * self.getGamma0(units = 'natural', polarisation = 'HV') + intercept
 
             else:
                 raise ValueError("Unknown satellite named '%s'. self.satellite must be 'ALOS-1' or 'ALOS-2'."%self.satellite)
@@ -780,7 +780,7 @@ class LoadChange(object):
 
         self.hem_NS = tile_t1.hem_NS
         self.hem_EW = tile_t1.hem_EW
-        
+
         # Get GDAL geotransform and projection
         self.geo_t = tile_t1.geo_t
         self.proj = tile_t1.proj
@@ -791,10 +791,10 @@ class LoadChange(object):
         self.change_area_threshold = change_area_threshold
         self.deforestation_threshold = deforestation_threshold
         self.combine_areas = combine_areas
-        
+
         # Set deforestation_treshold equal to forest_threshold if not in use
         if self.deforestation_threshold is None: self.deforestation_threshold = self.tile_t1.forest_threshold
-        
+
         self.contiguity = contiguity
 
         self.year_t1 = tile_t1.year
@@ -984,12 +984,12 @@ class LoadChange(object):
                     CHANGE_AFF, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & NF_F, True, min_pixels = min_pixels, contiguity = self.contiguity)
                     CHANGE = np.logical_or(np.logical_or(CHANGE_DEF, CHANGE_DEG), np.logical_or(CHANGE_GRO, CHANGE_AFF))
                     NOCHANGE = CHANGE == False
-                            
-            # Deforestation can be dramatic; allow a separate treshold to specify an end-biomass for deforestation 
+
+            # Deforestation can be dramatic; allow a separate treshold to specify an end-biomass for deforestation
             DEFORESTED = self.tile_t2.getAGB() < self.deforestation_threshold
-            
+
             change_type = {}
-            
+
             # These are all the possible definitions. Note: they *must* add up to one.
             change_type['deforestation'] = F_NF & CHANGE & DEFORESTED
             change_type['degradation'] = (F_F & CHANGE & DECREASE) | (F_NF & CHANGE & (DEFORESTED == False))
@@ -1000,7 +1000,7 @@ class LoadChange(object):
             change_type['minorgain'] = (F_F | NF_F) & NOCHANGE & INCREASE
 
             change_type['nonforest'] = NF_NF
-            
+
             # Also produce a code for output
             change_code = np.zeros((self.ySize, self.xSize), dtype = np.int8) + self.nodata_byte
 
@@ -1031,20 +1031,20 @@ class LoadChange(object):
             self.__showArray(change_code_display, title = 'Change type', cbartitle = 'Class', vmin = 1, vmax = 6, cmap = 'Spectral')
 
         return self.ChangeType
-    
+
     def getRiskMap(self, output = False, show = False, buffer_size = 50.):
         '''
         Fuction to return 'low' 'medium' and 'high' risks of deforestation, based on buffers around change locations.
-        
+
         Authors: Samuel Bowers (University of Edinburgh) and Muri Soares (Fundo Nacional de Desenvolvimento Sustentavel)
         '''
-        
+
         # Get change type for each pixel
         change_type = self.getChangeType()
-        
+
         # Extract 'deforestation' and 'degradation' pixels
         deforestation = change_type['deforestation'].astype(np.int8)
-        
+
         # Repeat change detection, but with no minimum change area threshold. Only process if deforestation_threshold exists
         if self.deforestation_threshold != self.tile_t1.forest_threshold:
             change_type_noDF = LoadChange(self.tile_t1, self.tile_t2, change_intensity_threshold = self.change_intensity_threshold, \
@@ -1053,31 +1053,31 @@ class LoadChange(object):
             deforestation_noDF = change_type_noDF['deforestation'].astype(np.int8)
         else:
             deforestation_noDF = change_type['deforestation'].astype(np.int8)
-               
+
         # Set up output image
         risk_map = np.zeros_like(deforestation).astype(np.int8)
-                
+
         # High risk of change
         risk_map[deforestation == 1] = 1
-        
+
         # Medium risk of change (no deforestation_threshold)
         risk_map[np.logical_and(risk_map == 0, deforestation_noDF == 1)] = 2
-        
+
         # Low risk of change
         low_dilate = scipy.ndimage.morphology.binary_dilation((np.logical_or(deforestation == 1, deforestation_noDF == 1)).astype(np.int8), iterations = int(round(buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 50 m buffer
-        
+
         risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
-                
+
         self.risk_map = np.ma.array(risk_map, mask = self.mask)
-        
+
         self.risk_map.mask = self.mask
-        
+
         if output: self.__outputGeoTiff(self.risk_map,'RiskMap')
-        
+
         if show: self.__showArray(self.risk_map, title = 'Deforestation risk map', cbartitle = 'Low - High risk', vmin = 0, vmax = 3, cmap = 'autumn')
-        
+
         return self.risk_map
-     
+
     def __sumChange(self, change_type, scale = 1):
         '''
         Function for scaling then summing and (optionally) scaling change statistics.
